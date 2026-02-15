@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Energia Fogyasztás Követő</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a1a;
+            color: #e0e0e0;
+            padding: 10px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: #2d2d2d;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        h1 {
+            font-size: 24px;
+            color: #4CAF50;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #45a049;
+        }
+
+        button.secondary {
+            background: #2196F3;
+        }
+
+        button.secondary:hover {
+            background: #0b7dda;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 15px;
+            background: #2d2d2d;
+            border: none;
+            border-radius: 12px;
+            color: #888;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .summary {
+            background: #2d2d2d;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .summary-item {
+            background: #3a3a3a;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .summary-item h3 {
+            font-size: 14px;
+            color: #888;
+            margin-bottom: 8px;
+        }
+
+        .summary-item .value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        .summary-item .value.warning {
+            color: #FF9800;
+        }
+
+        .summary-item .value.danger {
+            color: #f44336;
+        }
+
+        .table-container {
+            background: #2d2d2d;
+            border-radius: 12px;
+            padding: 15px;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 900px;
+        }
+
+        thead {
+            background: #3a3a3a;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        th {
+            padding: 12px 8px;
+            text-align: left;
+            font-size: 13px;
+            color: #4CAF50;
+            border-bottom: 2px solid #4CAF50;
+        }
+
+        td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #3a3a3a;
+            font-size: 14px;
+        }
+
+        tr.current-week {
+            background: #3a4a3a;
+        }
+
+        tr:hover {
+            background: #353535;
+        }
+
+        input[type="number"] {
+            width: 100%;
+            background: #3a3a3a;
+            border: 1px solid #555;
+            color: #e0e0e0;
+            padding: 6px;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+
+        .status {
+            text-align: center;
+            font-size: 20px;
+        }
+
+        .status.ok {
+            color: #4CAF50;
+        }
+
+        .status.bad {
+            color: #f44336;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 20px;
+            }
+
+            .summary {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .controls {
+                width: 100%;
+            }
+
+            button {
+                flex: 1;
+                min-width: 120px;
+            }
+        }
+
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #2d2d2d;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #4CAF50;
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚡ Energia Fogyasztás Követő <span style="font-size: 14px; color: #888;">v1.0.6</span></h1>
+            <div class="controls">
+                <button onclick="importCSV('gas')" class="secondary">📥 Gáz CSV</button>
+                <button onclick="importCSV('electric')" class="secondary">📥 Villany CSV</button>
+                <button onclick="exportCSV('gas')" class="secondary">💾 Gáz CSV</button>
+                <button onclick="exportCSV('electric')" class="secondary">💾 Villany CSV</button>
+                <button onclick="toggleFullscreen()">🖥️ Fullscreen</button>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('gas')">🔥 GÁZ</button>
+            <button class="tab" onclick="switchTab('electric')">⚡ VILLANY</button>
+        </div>
+
+        <!-- GÁZ TAB -->
+        <div id="gas-content" class="tab-content active">
+            <div class="summary" id="gas-summary"></div>
+            <div class="table-container">
+                <table id="gas-table"></table>
+            </div>
+        </div>
+
+        <!-- VILLANY TAB -->
+        <div id="electric-content" class="tab-content">
+            <div class="summary" id="electric-summary"></div>
+            <div class="table-container">
+                <table id="electric-table"></table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const CONFIG = {
+            gas: {
+                startDate: '2025-08-01', // 2025 augusztus 1 - 2026 július 31
+                limit: 1729,
+                startReading: 2107,
+                currentReading: 2271,
+                unit: 'm³'
+            },
+            electric: {
+                startDate: '2025-08-01', // 2025 augusztus 1 - 2026 július 31
+                limit: 2523,
+                startReading: 2847,
+                currentReading: 4129,
+                unit: 'kWh'
+            }
+        };
+
+        let data = {
+            gas: [],
+            electric: []
+        };
+
+        function initializeData() {
+            const saved = localStorage.getItem('energyData');
+            if (saved) {
+                data = JSON.parse(saved);
+            } else {
+                generateWeeks('gas');
+                generateWeeks('electric');
+            }
+            renderTables();
+        }
+
+        function generateWeeks(type) {
+            const config = CONFIG[type];
+            const startDate = new Date(config.startDate);
+            const weeks = [];
+            
+            for (let i = 0; i < 52; i++) {
+                const weekStart = new Date(startDate);
+                weekStart.setDate(startDate.getDate() + (i * 7));
+                
+                weeks.push({
+                    week: i + 1,
+                    date: weekStart.toISOString().split('T')[0],
+                    reading: i === 0 ? config.startReading : null,
+                    temp: null
+                });
+            }
+            
+            data[type] = weeks;
+        }
+
+        function calculateWeekData(type, weekIndex) {
+            const config = CONFIG[type];
+            const weeks = data[type];
+            const week = weeks[weekIndex];
+            
+            let weekConsumption = 0;
+            let cumulative = 0;
+            
+            // Calculate cumulative up to this week
+            for (let i = 0; i <= weekIndex; i++) {
+                if (i === 0) continue;
+                const prev = weeks[i - 1];
+                const curr = weeks[i];
+                if (prev.reading !== null && curr.reading !== null) {
+                    const consumption = curr.reading - prev.reading;
+                    cumulative += consumption;
+                    if (i === weekIndex) {
+                        weekConsumption = consumption;
+                    }
+                }
+            }
+            
+            const remaining = config.limit - cumulative;
+            // DINAMIKUS: hátralevő hetek a JELENLEGI héthez képest
+            const weeksLeft = 52 - weekIndex;
+            const weeklyTarget = weeksLeft > 0 ? remaining / weeksLeft : 0;
+            const isOk = weekConsumption <= weeklyTarget || weekConsumption === 0;
+            
+            return {
+                weekConsumption: weekConsumption.toFixed(1),
+                cumulative: cumulative.toFixed(1),
+                remaining: remaining.toFixed(1),
+                weeklyTarget: weeklyTarget.toFixed(1),
+                isOk: isOk
+            };
+        }
+
+        function getCurrentWeek() {
+            const now = new Date();
+            const start = new Date(CONFIG.gas.startDate);
+            const diff = now - start;
+            const weeksPassed = Math.floor(diff / (7 * 24 * 60 * 60 * 1000));
+            console.log('Mai dátum:', now.toISOString(), 'Eltelt hetek:', weeksPassed); // Debug
+            return Math.min(Math.max(weeksPassed, 0), 51);
+        }
+
+        function renderTables() {
+            renderTable('gas');
+            renderTable('electric');
+            renderSummary('gas');
+            renderSummary('electric');
+        }
+
+        function renderTable(type) {
+            const config = CONFIG[type];
+            const weeks = data[type];
+            const table = document.getElementById(`${type}-table`);
+            const currentWeek = getCurrentWeek();
+            
+            let html = `
+                <thead>
+                    <tr>
+                        <th>Hét</th>
+                        <th>Dátum</th>
+                        <th>Mérőállás<br>(${config.unit})</th>
+                        <th>Heti<br>(${config.unit})</th>
+                        <th>Kumulatív<br>(${config.unit})</th>
+                        <th>Maradék<br>(${config.unit})</th>
+                        <th>Heti cél<br>(${config.unit})</th>
+                        <th>Státusz</th>
+                        <th>Hőm.<br>(°C)</th>
+                    </tr>
+                </thead>
+                <tbody>
+            `;
+            
+            weeks.forEach((week, index) => {
+                const calc = calculateWeekData(type, index);
+                const isCurrent = index === currentWeek;
+                
+                html += `
+                    <tr class="${isCurrent ? 'current-week' : ''}">
+                        <td><strong>${week.week}</strong></td>
+                        <td>${formatDate(week.date)}</td>
+                        <td>
+                            <input type="number" 
+                                   value="${week.reading !== null ? week.reading : ''}" 
+                                   onchange="updateReading('${type}', ${index}, this.value)"
+                                   step="0.1">
+                        </td>
+                        <td>${calc.weekConsumption}</td>
+                        <td><strong>${calc.cumulative}</strong></td>
+                        <td>${calc.remaining}</td>
+                        <td>${calc.weeklyTarget}</td>
+                        <td class="status ${calc.isOk ? 'ok' : 'bad'}">
+                            ${calc.isOk ? '✓' : '✗'}
+                        </td>
+                        <td>
+                            <input type="number" 
+                                   value="${week.temp !== null ? week.temp : ''}" 
+                                   onchange="updateTemp('${type}', ${index}, this.value)"
+                                   step="0.1"
+                                   style="width: 60px;">
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody>';
+            table.innerHTML = html;
+        }
+
+        function renderSummary(type) {
+            const config = CONFIG[type];
+            const weeks = data[type];
+            const currentWeek = getCurrentWeek();
+            
+            // Keressük meg az utolsó hetet ahol van mérőállás
+            let lastFilledWeek = currentWeek;
+            for (let i = currentWeek; i >= 0; i--) {
+                if (weeks[i].reading !== null) {
+                    lastFilledWeek = i;
+                    break;
+                }
+            }
+            
+            // Az utolsó kitöltött hétre vonatkozó számítások
+            const calc = calculateWeekData(type, lastFilledWeek);
+            
+            const percentUsed = ((parseFloat(calc.cumulative) / config.limit) * 100).toFixed(1);
+            const weeksLeft = 52 - lastFilledWeek - 1; // Hátralevő hetek
+            
+            // Becsült végállás: jelenlegi kumulatív + (utolsó hét célja × hátralevő hetek)
+            const projectedEnd = parseFloat(calc.cumulative) + (parseFloat(calc.weeklyTarget) * weeksLeft);
+            
+            const summary = document.getElementById(`${type}-summary`);
+            
+            let statusClass = 'value';
+            if (percentUsed > 90) statusClass = 'value danger';
+            else if (percentUsed > 75) statusClass = 'value warning';
+            
+            summary.innerHTML = `
+                <div class="summary-item">
+                    <h3>Jelenlegi hét</h3>
+                    <div class="value">${currentWeek + 1} / 52</div>
+                </div>
+                <div class="summary-item">
+                    <h3>Felhasznált</h3>
+                    <div class="${statusClass}">${calc.cumulative} ${config.unit}</div>
+                </div>
+                <div class="summary-item">
+                    <h3>Maradék</h3>
+                    <div class="value">${calc.remaining} ${config.unit}</div>
+                </div>
+                <div class="summary-item">
+                    <h3>Kihasználtság</h3>
+                    <div class="${statusClass}">${percentUsed}%</div>
+                </div>
+                <div class="summary-item">
+                    <h3>Heti cél</h3>
+                    <div class="value">${calc.weeklyTarget} ${config.unit}</div>
+                </div>
+                <div class="summary-item">
+                    <h3>Becsült júl 31</h3>
+                    <div class="value">${projectedEnd.toFixed(0)} ${config.unit}</div>
+                </div>
+            `;
+        }
+
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            const months = ['jan', 'feb', 'már', 'ápr', 'máj', 'jún', 'júl', 'aug', 'szep', 'okt', 'nov', 'dec'];
+            return `${months[date.getMonth()]} ${date.getDate()}`;
+        }
+
+        function updateReading(type, index, value) {
+            data[type][index].reading = value ? parseFloat(value) : null;
+            saveData();
+            // Teljes újratöltés mindkét táblázatnak
+            renderTables();
+        }
+
+        function updateTemp(type, index, value) {
+            data[type][index].temp = value ? parseFloat(value) : null;
+            saveData();
+        }
+
+        function saveData() {
+            localStorage.setItem('energyData', JSON.stringify(data));
+        }
+
+        function switchTab(type) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(`${type}-content`).classList.add('active');
+        }
+
+        function exportCSV(type) {
+            const config = CONFIG[type];
+            const weeks = data[type];
+            
+            let csv = 'Hét,Dátum,Mérőállás,Hőmérséklet\n';
+            
+            weeks.forEach(week => {
+                const reading = week.reading !== null ? week.reading : '';
+                const temp = week.temp !== null ? week.temp : '';
+                csv += `${week.week},${week.date},${reading},${temp}\n`;
+            });
+            
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `energia_${type}_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function importCSV(type) {
+            // Létrehozunk egy új input elemet minden alkalommal
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = '.csv,text/csv';
+            fileInput.style.display = 'none';
+            
+            // Event handler a fájl kiválasztásához
+            fileInput.addEventListener('change', function(event) {
+                const file = event.target.files[0];
+                if (!file) {
+                    alert('Nincs fájl kiválasztva!');
+                    return;
+                }
+                
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    try {
+                        const csvContent = e.target.result;
+                        const lines = csvContent.split('\n');
+                        
+                        let imported = 0;
+                        
+                        // Végigmegyünk az összes soron (header után)
+                        for (let i = 1; i < lines.length; i++) {
+                            const line = lines[i].trim();
+                            if (line === '') continue;
+                            
+                            const columns = line.split(',');
+                            if (columns.length < 3) continue;
+                            
+                            const weekNum = parseInt(columns[0]);
+                            const dateStr = columns[1];
+                            const readingStr = columns[2];
+                            const tempStr = columns[3];
+                            
+                            const dataIndex = weekNum - 1;
+                            
+                            if (dataIndex >= 0 && dataIndex < data[type].length) {
+                                // Mérőállás
+                                if (readingStr && readingStr.trim() !== '') {
+                                    data[type][dataIndex].reading = parseFloat(readingStr);
+                                } else {
+                                    data[type][dataIndex].reading = null;
+                                }
+                                
+                                // Hőmérséklet
+                                if (tempStr && tempStr.trim() !== '') {
+                                    data[type][dataIndex].temp = parseFloat(tempStr);
+                                } else {
+                                    data[type][dataIndex].temp = null;
+                                }
+                                
+                                imported++;
+                            }
+                        }
+                        
+                        saveData();
+                        renderTables();
+                        alert(`Sikeres import!\n${imported} hét adatai betöltve.`);
+                        
+                    } catch (error) {
+                        alert('Hiba történt a CSV beolvasásakor!\n' + error.message);
+                        console.error('Import hiba:', error);
+                    }
+                };
+                
+                reader.onerror = function() {
+                    alert('Hiba a fájl olvasásakor!');
+                };
+                
+                reader.readAsText(file);
+            });
+            
+            // Hozzáadjuk a DOM-hoz és kattintunk rá
+            document.body.appendChild(fileInput);
+            fileInput.click();
+            
+            // Eltávolítjuk a DOM-ból kis késleltetéssel
+            setTimeout(function() {
+                document.body.removeChild(fileInput);
+            }, 1000);
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        // Initialize
+        initializeData();
+    </script>
+</body>
+</html>
